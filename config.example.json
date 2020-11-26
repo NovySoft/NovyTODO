@@ -1,0 +1,15 @@
+{
+    "kreta": {
+        "school": "",
+        "username": "",
+        "password": ""
+    },
+    "teams": {
+        "username": "",
+        "password": ""
+    },
+    "todo": {
+        "username": "",
+        "password": ""
+    }
+}

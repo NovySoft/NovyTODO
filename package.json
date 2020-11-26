@@ -1,0 +1,22 @@
+{
+  "name": "novytodo",
+  "version": "0.0.1",
+  "description": "Sync homework from ekreta and teams to ms-todo",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NovySoft/NovyTODO.git"
+  },
+  "author": "Novy",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/NovySoft/NovyTODO/issues"
+  },
+  "homepage": "https://github.com/NovySoft/NovyTODO#readme",
+  "dependencies": {
+    "puppeteer": "^5.5.0"
+  }
+}

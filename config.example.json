@@ -1,15 +1,19 @@
 {
     "kreta": {
-        "school": "",
-        "username": "",
-        "password": ""
+        "school": "your institute code (klik1234,bmszc-...)",
+        "username": "your ekreta username",
+        "password": "your ekreta password"
     },
     "teams": {
-        "username": "",
-        "password": ""
+        "username": "your teams account where you want to get the assignments from (https://teams.microsoft.com/)",
+        "password": "your teams account password"
     },
     "todo": {
-        "username": "",
-        "password": ""
+        "username": "your microsoft account where you want to post the to-do items (https://to-do.microsoft.com/tasks/)",
+        "password": "your microsoft account password"
+    },
+    "api": {
+        "clientId": "your app client id from azure dashboard (with permission tasks.readwrite)",
+        "clientSecret": "your client secret from azure dashboard"
     }
 }

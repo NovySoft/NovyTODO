@@ -1,36 +1,80 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
-var html2json = require('html2json').html2json;
+const html2json = require('html2json').html2json;
 const requiem = require("requiem-http");
-var qs = require("querystring");
-var userData;
-var homeworkObjectList = [];
+const qs = require("querystring");
+const express = require("express");
+const msal = require('@azure/msal-node');
+const { table } = require('console');
+const SERVER_PORT = 3000;
+var microsoftApiToken;
+var rawData = fs.readFileSync("config.json", "utf-8");
+var userData = JSON.parse(rawData);
 
-function loadUserData() {
-    let rawData = fs.readFileSync("config.json", "utf-8");
-    let data = JSON.parse(rawData);
-    console.log("Loaded UserData");
-    return data;
-}
+const config = {
+    auth: {
+        clientId: userData.api.clientId,
+        authority: "https://login.microsoftonline.com/common",
+        clientSecret: userData.api.clientSecret,
+    },
+    system: { loggerOptions: { loggerCallback(loglevel, message, containsPii) { console.log(message); }, piiLoggingEnabled: false, logLevel: msal.LogLevel.Verbose, } }
+};
+
+// Create msal application object
+const pca = new msal.ConfidentialClientApplication(config);
+const app = express();
+app.disable("x-powered-by");
+
+app.get('/', (req, res) => {
+    const authCodeUrlParameters = {
+        scopes: ["user.read", "tasks.readwrite"],
+        redirectUri: "http://localhost:3000/redirect",
+    };
+
+    // get url to sign user in and consent to scopes needed for application
+    pca.getAuthCodeUrl(authCodeUrlParameters).then((response) => {
+        res.redirect(response);
+    }).catch((error) => console.log(JSON.stringify(error)));
+});
+
+app.get('/redirect', (req, res) => {
+    const tokenRequest = {
+        code: req.query.code,
+        scopes: ["user.read"],
+        redirectUri: "http://localhost:3000/redirect",
+    };
+
+    pca.acquireTokenByCode(tokenRequest).then((response) => {
+        microsoftApiToken = response.accessToken;
+        res.sendStatus(200);
+    }).catch((error) => {
+        console.log(error);
+        res.status(500).send(error);
+    });
+});
 
 async function main() {
-    userData = loadUserData();
-    homeworkObjectList = [];
+    let homeworkObjectList = [];
     let temp = await loginAndGetTeamsAssignments(userData);
+    //Todo: run code async to save some time
     homeworkObjectList.push.apply(homeworkObjectList, temp);
     temp = await getKretaAssignments(userData);
     homeworkObjectList.push.apply(homeworkObjectList, temp);
-    console.log(homeworkObjectList);
-    console.log("DONE");
+    console.log("The fetching part is done");
+    await getMSApiToken(userData); //Sets microsoftApiToken variable
+    await insertHomeworkTodos([]);
+    console.log("Operation done, have great day");
+    console.log("Complete operation took: "); //Todo: impletement timers
 }
 
 //This function returns a list with the objects of the teams assignments
 async function loginAndGetTeamsAssignments(userdata) {
-    const browser = await puppeteer.launch({
+    let browser = await puppeteer.launch({
         headless: false,
+        //UnSafe args used to get crossSite iframe content
         args: ['--no-sandbox', '--disable-web-security', '--disable-features=site-per-process']
     });
-    const page = await browser.newPage();
+    let page = await browser.newPage();
     console.log("Launched Puppeteer");
     //START OF LOGIN
     await page.goto('https://office.com', { waitUntil: 'networkidle0' });
@@ -88,6 +132,8 @@ async function loginAndGetTeamsAssignments(userdata) {
         };
     });
     console.log("Made JS objects from JSON");
+    await page.close();
+    await browser.close();
     return tempHomeworkObjectList;
 }
 
@@ -169,6 +215,62 @@ function removeTags(str) {
     else
         str = str.toString();
     return str.replace(/(<([^>]+)>)/ig, '');
+}
+
+async function getMSApiToken(userdata) {
+    let server = app.listen(SERVER_PORT, () => console.log('Express Login Server Started'));
+    let browser = await puppeteer.launch({
+        headless: false,
+    });
+    let page = await browser.newPage();
+    await page.goto('http://localhost:3000/', { waitUntil: 'networkidle0' });
+    await timeout(300);
+    await page.type('#i0116', userdata.todo.username);
+    await page.click("#idSIButton9"); //Press next
+    console.log("Entered Username");
+    await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    await page.type('#i0118', userdata.todo.password);
+    await page.click("#idSIButton9"); //Press login
+    console.log("Entered Password");
+    await page.waitForNavigation({ waitUntil: 'networkidle0' });
+    //!NOTICE FIRST YOU SHOULD MANUALLY ALLOW YOUR APPLICATION
+    //!You musn't click stay signed in!
+    //*The code cannot decide whether that is necessary
+    server.close();
+    await page.close();
+    await browser.close();
+    if (microsoftApiToken == null) {
+        throw Error("Token wasn't found");
+    } else {
+        console.log("Express Login Server Closed + Api Login Successful");
+    }
+}
+
+async function insertHomeworkTodos(homeworks) {
+    let listId = await getTODOListId();
+    console.log(listId);
+}
+
+//This function grabs the id of the todo list we are going to push into
+async function getTODOListId() {
+    let res = await requiem
+        .requestBody({
+            url: "https://graph.microsoft.com/v1.0/me/todo/lists",
+            headers: {
+                "User-Agent": "NovyTODO",
+                "Authorization": "Bearer " + microsoftApiToken,
+            },
+        });
+    let responseJson = parseResponse(res.body.toString("utf8"));
+    let returnIdList = responseJson.value.filter(element => {
+        return element.wellknownListName == "defaultList";
+    });
+    if (returnIdList.length == 0) {
+        throw new Error("Couldn't find default list");
+    } else if (returnIdList.length > 1) {
+        console.warn("More than one defult list was found, using the first one");
+    }
+    return returnIdList[0].id;
 }
 
 

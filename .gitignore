@@ -117,3 +117,5 @@ dist
 
 #sensitive data
 config.json
+tmp/*
+test.*

@@ -117,5 +117,10 @@ dist
 
 #sensitive data
 config.json
+
+#testing folders and files
 tmp/*
 test.*
+
+#database folder
+db/*

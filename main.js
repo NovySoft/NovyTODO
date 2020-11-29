@@ -85,7 +85,6 @@ async function main() {
     let homeworkObjectList = [];
     addCustomFunction();
     await openDatabase();
-    await getAlreadyInsertedItems();
     let temp = await loginAndGetTeamsAssignments(userData);
     //Todo: run code async to save some time
     //TODO: Split into multiple files
@@ -96,7 +95,7 @@ async function main() {
     await getMSApiToken(userData); //Sets microsoftApiToken variable
     await insertHomeworkTodos(homeworkObjectList);
     console.log("Operation done, have great day");
-    console.log("Complete operation took: "); //Todo: impletement timers
+    console.log("Complete operation took: "); //Todo: impletement timers*/
 }
 
 //This function returns a list with the objects of the teams assignments
@@ -159,7 +158,9 @@ async function loginAndGetTeamsAssignments(userdata) {
         let tempTitle = element.child[0].child[0].child[0].child[1].child[0].child[0].text;
         let tempClass = element.child[0].child[0].child[0].child[2].child[0].text;
         let due = element.child[0].child[0].child[0].child[3].child[0].child[2].child[0].text;
-        if (due.split("Határidő: ")[1] != null || due.split("Határidő: ")[1] != undefined) {
+        if ((due.split("Határidő: ")[1] != null || due.split("Határidő: ")[1] != undefined) &&
+            !(due.includes("holnap") || due.includes("tomorrow") ||
+                (due.includes("ma") || due.includes("today")))) {
             due = due.split("Határidő: ")[1];
             due = Date.parse(due);
             due = new Date(due).toISOString();
@@ -183,12 +184,28 @@ async function loginAndGetTeamsAssignments(userdata) {
                 }
                 tomorrow.setHours(hourminutes.split(":")[0]);
                 tomorrow.setMinutes(hourminutes.split(":")[1]);
+                tomorrow.setSeconds(0);
+                tomorrow.setMilliseconds(0);
                 due = tomorrow.toISOString();
-                console.log("HOLNAP");
             } else if (due.includes("ma") || due.includes("today")) {
-                console.log("MA");
-                //FIXME: Megcsinálni
+                const today = new Date();
+                let hourminutes = null;
+                if (due.includes("ma")) {
+                    hourminutes = due.split("Határidő ma ekkor: ")[1]; //Időpont, de csak óra és perc
+                } else if (due.includes("tomorrow")) {
+                    hourminutes = getTwentyFourHourTime(due.split("Due today at ")[1]);
+                }
+                if (hourminutes == null) {
+                    console.error(`Could determinate due date of this (${"t" + (tempClass + tempTitle).hashCode()}) object, continuing with other objects`);
+                    return;
+                }
+                today.setHours(hourminutes.split(":")[0]);
+                today.setMinutes(hourminutes.split(":")[1]);
+                today.setSeconds(0);
+                today.setMilliseconds(0);
+                due = today.toISOString();
             }
+            //FIXME: Lehet tegnap érték is?
         }
         return {
             id: "t" + (tempClass + tempTitle).hashCode(), //t for teams
@@ -255,9 +272,9 @@ async function getKretaAssignments(userdata) {
     let tempHomeworkObjectList = responseJson.map(element => {
         let tempTitle = removeTags(element.Szoveg);
         let tempDetail = '';
-        if (tempTitle.length > 255) {
-            tempTitle = tempTitle.substring(0, 255);
-            tempDetail = tempTitle.substring(255);
+        if (tempTitle.length + element.TantargyNeve > 250) {
+            tempTitle = tempTitle.substring(0, 250 - element.TantargyNeve - 1);
+            tempDetail = tempTitle.substring(250 - element.TantargyNeve - 1);
         }
         return {
             id: "k" + element.Uid, //K for kréta
@@ -336,7 +353,8 @@ async function insertHomeworkTodos(homeworks) {
             throw Error("Exist List Contains more than one match");
         }
         if (existList.length > 0) {
-            console.log(`Element ${e.todoId} (${e.class}) already inserted, updating`);
+            console.log(`Element ${item.id} (${item.class}) already inserted, updating`);
+            //FIXME make updates work
         } else {
             let result = await insertNewMsTODO(item, listId);
             if (result != true) {
@@ -344,10 +362,12 @@ async function insertHomeworkTodos(homeworks) {
                 console.error("TODO request failed. This is what I got in response:");
                 console.error(result);
                 console.log("");
+            } else {
+                await insertIntoDB(item);
+                console.log("Inserted items into todo and database");
             }
         }
     }
-    console.log(homeworks);
 }
 
 async function insertNewMsTODO(todo, taskListId) {
@@ -357,7 +377,7 @@ async function insertNewMsTODO(todo, taskListId) {
     reminderDateString.setHours(12); //I like getting notfications at 12 o'clock
     reminderDateString = reminderDateString.toISOString();
     var postData = JSON.stringify({
-        title: todo.title,
+        title: todo.class + " " + todo.title,
         body: {
             content: todo.details + "   -Made with novyTODO",
             contentType: "text"
@@ -383,7 +403,6 @@ async function insertNewMsTODO(todo, taskListId) {
         body: postData,
     };
     let res = await requiem.requestBody(postJsonOptions);
-    console.log(res.body.toString());
     if (res.statusCode == 200 || res.statusCode == 201) {
         return true;
     } else {
@@ -396,10 +415,14 @@ async function getAlreadyInsertedItems() {
     return result;
 }
 
-async function insertIntoDB(id, name) {
-    await db.run("INSERT INTO todo_data (todoId, name) VALUES (:id, :name)", {
-        ':id': id,
-        ':name': name,
+//Takes an hwObject as input
+async function insertIntoDB(input) {
+    await db.run("INSERT INTO todo_data (todoId, title, details, class, due) VALUES (:id, :title, :details, :class, :due)", {
+        ':id': input.id,
+        ':title': input.title,
+        ':details': input.details,
+        ':class': input.class,
+        ':due': input.due,
     });
 }
 

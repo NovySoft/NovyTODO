@@ -8,8 +8,11 @@ const msal = require('@azure/msal-node');
 const sqlite3 = require('sqlite3').verbose();
 const sqlite = require('sqlite');
 const { table } = require('console');
+const colors = require('colors');
 const SERVER_PORT = 3000;
 var microsoftApiToken;
+var totalStart = new Date();
+var start = new Date();
 var rawData = fs.readFileSync("config.json", "utf-8");
 var userData = JSON.parse(rawData);
 const databasePath = "./db/novytodo.db";
@@ -82,20 +85,33 @@ function addCustomFunction() {
 }
 
 async function main() {
+    start = new Date();
     let homeworkObjectList = [];
     addCustomFunction();
     await openDatabase();
+    let databaseTime = Math.abs(start - new Date());
+    start = new Date();
     let temp = await loginAndGetTeamsAssignments(userData);
-    //Todo: run code async to save some time
-    //TODO: Split into multiple files
     homeworkObjectList.push.apply(homeworkObjectList, temp);
+    let teamsTime = Math.abs(start - new Date());
+    start = new Date();
     temp = await getKretaAssignments(userData);
     homeworkObjectList.push.apply(homeworkObjectList, temp);
-    console.log("The fetching part is done");
+    let kretaTime = Math.abs(start - new Date());
+    start = new Date();
+    console.log("The fetching part is done".yellow);
     await getMSApiToken(userData); //Sets microsoftApiToken variable
     await insertHomeworkTodos(homeworkObjectList);
-    console.log("Operation done, have great day");
-    console.log("Complete operation took: "); //Todo: impletement timers*/
+    let todoTime = Math.abs(start - new Date());
+    start = new Date();
+    let fullTime = Math.abs(totalStart - new Date());
+    console.log("\n");
+    console.log("Operation done, have great day".green);
+    console.log(("Complete operation took: " + fullTime / 60 + "s").blue);
+    console.log(("Database time: " + databaseTime / 60 + "s").blue);
+    console.log(("Teams time: " + teamsTime / 60 + "s").blue);
+    console.log(("Kréta time: " + kretaTime / 60 + "s").blue);
+    console.log(("Todo time: " + todoTime / 60 + "s").blue);
 }
 
 //This function returns a list with the objects of the teams assignments
@@ -106,40 +122,40 @@ async function loginAndGetTeamsAssignments(userdata) {
         args: ['--no-sandbox', '--disable-web-security', '--disable-features=site-per-process']
     });
     let page = await browser.newPage();
-    console.log("Launched Puppeteer");
+    console.log("Launched Puppeteer".magenta);
     //START OF LOGIN
     await page.goto('https://office.com', { waitUntil: 'networkidle0' });
-    console.log("Opened office");
+    console.log("Opened office".magenta);
     await page.click("#hero-banner-sign-in-to-office-365-link"); //Press login
-    console.log("Opened Login Page");
+    console.log("Opened Login Page".magenta);
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
     await page.type('#i0116', userdata.teams.username);
     await page.click("#idSIButton9"); //Press next
-    console.log("Entered Username");
+    console.log("Entered Username".magenta);
     await timeout(5000); //Wait if automatic login is available
     await page.type('#i0118', userdata.teams.password);
     await page.click("#idSIButton9"); //Press login
-    console.log("Entered Password");
+    console.log("Entered Password".magenta);
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
-    console.log("Pressed Stay Logged In");
+    console.log("Pressed Stay Logged In".magenta);
     await page.click("#idSIButton9"); //Press stayed login
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
-    console.log("Office login complete");
+    console.log("Office login complete".magenta);
     await page.goto('https://teams.microsoft.com/', { waitUntil: 'networkidle2' });
     await page.click(".use-app-lnk"); //Navigate to teams and click on I rather use the webapp
-    console.log("Opened teams webapp");
+    console.log("Opened teams webapp".magenta);
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
     //END OF LOGIN
     //START OF GETTING ASSIGMENTS
     await page.click("#teams-app-bar > ul > li:nth-child(4)"); //Click on assignments
     await page.reload({ waitUntil: "networkidle2" });
-    console.log("Navigated To Assignments Page");
+    console.log("Navigated To Assignments Page".magenta);
     await timeout(5000);
     await page.evaluate(() => {
         document.querySelector("embedded-page-container > div > iframe").contentWindow.document.body.querySelector("div > .desktop-list-padding__3ShvT > div:nth-child(1) > button").click();
         return null;
     });
-    console.log("Opened all assignments that are not handed in");
+    console.log("Opened all assignments that are not handed in".magenta);
     await timeout(5000);
     var iframe = await page.evaluate((sel) => {
         let elements = Array.from(document.querySelector("embedded-page-container > div > iframe").contentWindow.document.body.querySelector(".desktop-list-padding__3ShvT > div:nth-child(2) >div").children);
@@ -148,12 +164,12 @@ async function loginAndGetTeamsAssignments(userdata) {
         });
         return links;
     });
-    console.log("Got iFrame content");
+    console.log("Got iFrame content".magenta);
     let iframeJsonList = iframe.map(element => {
         var json = html2json(element);
         return json;
     });
-    console.log("Converted iFrame content to JSON");
+    console.log("Converted iFrame content to JSON".magenta);
     let tempHomeworkObjectList = iframeJsonList.map(element => {
         let tempTitle = element.child[0].child[0].child[0].child[1].child[0].child[0].text;
         let tempClass = element.child[0].child[0].child[0].child[2].child[0].text;
@@ -215,7 +231,7 @@ async function loginAndGetTeamsAssignments(userdata) {
             due: due,
         };
     });
-    console.log("Made JS objects from JSON");
+    console.log("Made JS objects from JSON".green);
     await page.close();
     await browser.close();
     return tempHomeworkObjectList;
@@ -258,7 +274,7 @@ async function getKretaAssignments(userdata) {
     };
     let res = await requiem.requestBody(postJsonOptions);
     let token = parseResponse(res.body.toString("utf8")).access_token;
-    console.log("Got Kreta Token");
+    console.log("Got Kreta Token".magenta);
     res = await requiem
         .requestBody({
             url: `https://${userdata.kreta.school}.e-kreta.hu/ellenorzo/V3/Sajat/HaziFeladatok?datumTol=${todayString}`,
@@ -268,7 +284,7 @@ async function getKretaAssignments(userdata) {
             },
         });
     let responseJson = parseResponse(res.body.toString("utf8"));
-    console.log("Got Kreta Assignments");
+    console.log("Got Kreta Assignments".magenta);
     let tempHomeworkObjectList = responseJson.map(element => {
         let tempTitle = removeTags(element.Szoveg);
         let tempDetail = '';
@@ -284,7 +300,7 @@ async function getKretaAssignments(userdata) {
             due: element.HataridoDatuma,
         };
     });
-    console.log("Created Kreta Assignments Object");
+    console.log("Created Kreta Assignments Object".green);
     return tempHomeworkObjectList;
 }
 
@@ -314,7 +330,7 @@ function removeTags(str) {
 }
 
 async function getMSApiToken(userdata) {
-    let server = app.listen(SERVER_PORT, () => console.log('Express Login Server Started'));
+    let server = app.listen(SERVER_PORT, () => console.log('Express Login Server Started'.magenta));
     let browser = await puppeteer.launch({
         headless: false,
     });
@@ -323,11 +339,11 @@ async function getMSApiToken(userdata) {
     await timeout(300);
     await page.type('#i0116', userdata.todo.username);
     await page.click("#idSIButton9"); //Press next
-    console.log("Entered Username");
+    console.log("Entered Username".magenta);
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
     await page.type('#i0118', userdata.todo.password);
     await page.click("#idSIButton9"); //Press login
-    console.log("Entered Password");
+    console.log("Entered Password".magenta);
     await page.waitForNavigation({ waitUntil: 'networkidle0' });
     //!NOTICE FIRST YOU SHOULD MANUALLY ALLOW YOUR APPLICATION
     //!You musn't click stay signed in!
@@ -338,12 +354,11 @@ async function getMSApiToken(userdata) {
     if (microsoftApiToken == null) {
         throw Error("Token wasn't found");
     } else {
-        console.log("Express Login Server Closed + Api Login Successful");
+        console.log("Express Login Server Closed + Api Login Successful".green);
     }
 }
 
 async function insertHomeworkTodos(homeworks) {
-    //TODO implement counters for done, and new items
     let listId = await getTODOListId();
     //let items = await getTODOitems(listId);
     let alreadyInsertedItems = await getAlreadyInsertedItems();
@@ -353,18 +368,18 @@ async function insertHomeworkTodos(homeworks) {
             throw Error("Exist List Contains more than one match");
         }
         if (existList.length > 0) {
-            console.log(`Element ${item.id} (${item.class}) already inserted, updating`);
+            console.log(`Element ${item.id} (${item.class}) already inserted, updating`.yellow);
             //FIXME make updates work
         } else {
             let result = await insertNewMsTODO(item, listId);
             if (result != true) {
                 console.log("");
-                console.error("TODO request failed. This is what I got in response:");
+                console.error("TODO request failed. This is what I got in response:".red);
                 console.error(result);
                 console.log("");
             } else {
                 await insertIntoDB(item);
-                console.log("Inserted items into todo and database");
+                console.log(`Inserted ${item.id} (${item.class}) into todo and database`.green);
             }
         }
     }
@@ -478,7 +493,7 @@ async function openDatabase() {
         driver: sqlite3.cached.Database,
     });
     await db.run("CREATE TABLE IF NOT EXISTS todo_data (databaseId INTEGER PRIMARY KEY,todoId TEXT,title TEXT, details TEXT, class TEXT, due TEXT)");
-    console.log("Opened Databased");
+    console.log("Opened Databased".green);
 }
 
 

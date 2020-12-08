@@ -17,6 +17,7 @@ var rawData = fs.readFileSync("config.json", "utf-8");
 var userData = JSON.parse(rawData);
 const databasePath = "./db/novytodo.db";
 var db;
+var headless = true;
 
 const config = {
     auth: {
@@ -117,7 +118,7 @@ async function main() {
 //This function returns a list with the objects of the teams assignments
 async function loginAndGetTeamsAssignments(userdata) {
     let browser = await puppeteer.launch({
-        headless: false,
+        headless: headless,
         //UnSafe args used to get crossSite iframe content
         args: ['--no-sandbox', '--disable-web-security', '--disable-features=site-per-process']
     });
@@ -332,7 +333,7 @@ function removeTags(str) {
 async function getMSApiToken(userdata) {
     let server = app.listen(SERVER_PORT, () => console.log('Express Login Server Started'.magenta));
     let browser = await puppeteer.launch({
-        headless: false,
+        headless: headless,
     });
     let page = await browser.newPage();
     await page.goto('http://localhost:3000/', { waitUntil: 'networkidle0' });

@@ -125,11 +125,15 @@ async function loginAndGetTeamsAssignments(userdata) {
     let page = await browser.newPage();
     console.log("Launched Puppeteer".magenta);
     //START OF LOGIN
-    await page.goto('https://office.com', { waitUntil: 'networkidle0' });
+    await page.goto('https://office.com', { waitUntil: 'networkidle0', timeout: 0 });
     console.log("Opened office".magenta);
     await page.click("#hero-banner-sign-in-to-office-365-link"); //Press login
     console.log("Opened Login Page".magenta);
-    await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    try {
+        await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    } catch (e) {
+        console.log("Navigation timeout continuing".red);
+    }
     await page.type('#i0116', userdata.teams.username);
     await page.click("#idSIButton9"); //Press next
     console.log("Entered Username".magenta);
@@ -137,19 +141,31 @@ async function loginAndGetTeamsAssignments(userdata) {
     await page.type('#i0118', userdata.teams.password);
     await page.click("#idSIButton9"); //Press login
     console.log("Entered Password".magenta);
-    await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    try {
+        await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    } catch (e) {
+        console.log("Navigation timeout continuing".red);
+    }
     console.log("Pressed Stay Logged In".magenta);
     await page.click("#idSIButton9"); //Press stayed login
-    await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    try {
+        await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    } catch (e) {
+        console.log("Navigation timeout continuing".red);
+    }
     console.log("Office login complete".magenta);
-    await page.goto('https://teams.microsoft.com/', { waitUntil: 'networkidle2' });
+    await page.goto('https://teams.microsoft.com/', { waitUntil: 'networkidle2', timeout: 0 });
     await page.click(".use-app-lnk"); //Navigate to teams and click on I rather use the webapp
     console.log("Opened teams webapp".magenta);
-    await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    try {
+        await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    } catch (e) {
+        console.log("Navigation timeout continuing".red);
+    }
     //END OF LOGIN
     //START OF GETTING ASSIGMENTS
     await page.click("#teams-app-bar > ul > li:nth-child(4)"); //Click on assignments
-    await page.reload({ waitUntil: "networkidle2" });
+    await page.reload({ waitUntil: "networkidle2", timeout: 0 });
     console.log("Navigated To Assignments Page".magenta);
     await timeout(5000);
     await page.evaluate(() => {
@@ -336,16 +352,24 @@ async function getMSApiToken(userdata) {
         headless: headless,
     });
     let page = await browser.newPage();
-    await page.goto('http://localhost:3000/', { waitUntil: 'networkidle0' });
+    await page.goto('http://localhost:3000/', { waitUntil: 'networkidle0', timeout: 0 });
     await timeout(300);
     await page.type('#i0116', userdata.todo.username);
     await page.click("#idSIButton9"); //Press next
     console.log("Entered Username".magenta);
-    await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    try {
+        await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    } catch (e) {
+        console.log("Navigation timeout continuing".red);
+    }
     await page.type('#i0118', userdata.todo.password);
     await page.click("#idSIButton9"); //Press login
     console.log("Entered Password".magenta);
-    await page.waitForNavigation({ waitUntil: 'networkidle0' });
+    try {
+        await page.waitForNavigation({ waitUntil: 'networkidle0' });
+    } catch (e) {
+        console.log("Navigation timeout continuing".red);
+    }
     //!NOTICE FIRST YOU SHOULD MANUALLY ALLOW YOUR APPLICATION
     //!You musn't click stay signed in!
     //*The code cannot decide whether that is necessary

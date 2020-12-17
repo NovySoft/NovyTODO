@@ -17,7 +17,11 @@ var rawData = fs.readFileSync("config.json", "utf-8");
 var userData = JSON.parse(rawData);
 const databasePath = "./db/novytodo.db";
 var db;
-var headless = false;
+var headless = true;
+var newItems = {
+    kreta: 0,
+    teams: 0,
+};
 
 const config = {
     auth: {
@@ -108,6 +112,9 @@ async function main() {
     let fullTime = Math.abs(totalStart - new Date());
     console.log("\n");
     console.log("Operation done, have great day".green);
+    console.log(("Inserted new items, in total: " + (newItems.kreta + newItems.teams)).brightGreen);
+    console.log(("Inserted kreta items: " + newItems.kreta).brightGreen);
+    console.log(("Inserted teams items: " + newItems.teams).brightGreen);
     console.log(("Complete operation took: " + fullTime / 60 + "s").blue);
     console.log(("Database time: " + databaseTime / 60 + "s").blue);
     console.log(("Teams time: " + teamsTime / 60 + "s").blue);
@@ -408,7 +415,7 @@ async function insertHomeworkTodos(homeworks) {
             throw Error("Exist List Contains more than one match");
         }
         if (existList.length > 0) {
-            console.log(`Element ${item.id} (${item.class}) already inserted, updating`.yellow);
+            console.log(`Element ${item.id} (${item.class}) already inserted, should update`.yellow);
             //FIXME make updates work
         } else {
             let result = await insertNewMsTODO(item, listId);
@@ -472,6 +479,11 @@ async function getAlreadyInsertedItems() {
 
 //Takes an hwObject as input
 async function insertIntoDB(input) {
+    if (input.id.startsWith("k")) {
+        newItems.kreta += 1;
+    } else {
+        newItems.teams += 1;
+    }
     await db.run("INSERT INTO todo_data (todoId, title, details, class, due) VALUES (:id, :title, :details, :class, :due)", {
         ':id': input.id,
         ':title': input.title,

@@ -17,7 +17,7 @@ var rawData = fs.readFileSync("config.json", "utf-8");
 var userData = JSON.parse(rawData);
 const databasePath = "./db/novytodo.db";
 var db;
-var headless = true;
+var headless = false;
 
 const config = {
     auth: {
@@ -168,13 +168,24 @@ async function loginAndGetTeamsAssignments(userdata) {
     await page.reload({ waitUntil: "networkidle2", timeout: 0 });
     console.log("Navigated To Assignments Page".magenta);
     await timeout(5000);
-    await page.evaluate(() => {
-        document.querySelector("embedded-page-container > div > iframe").contentWindow.document.body.querySelector("div > .desktop-list-padding__3ShvT > div:nth-child(1) > button").click();
-        return null;
+    let doesExist = await page.evaluate(() => {
+        if (document.querySelector("embedded-page-container > div > iframe").contentWindow.document.body.querySelector("div > .desktop-list-padding__3ShvT > div:nth-child(1) > button") != null) {
+            document.querySelector("embedded-page-container > div > iframe").contentWindow.document.body.querySelector("div > .desktop-list-padding__3ShvT > div:nth-child(1) > button").click();
+            return true;
+        } else {
+            return false;
+        }
     });
-    console.log("Opened all assignments that are not handed in".magenta);
+    if (doesExist) {
+        console.log("Opened all assignments that are not handed in".magenta);
+    } else {
+        console.log("Seems like you have got no older assignments button, continuing".magenta);
+    }
     await timeout(5000);
     var iframe = await page.evaluate((sel) => {
+        if (document.querySelector("embedded-page-container > div > iframe").contentWindow.document.body.querySelector(".desktop-list-padding__3ShvT > div:nth-child(2) >div") == null) {
+            return true;
+        }
         let elements = Array.from(document.querySelector("embedded-page-container > div > iframe").contentWindow.document.body.querySelector(".desktop-list-padding__3ShvT > div:nth-child(2) >div").children);
         let links = elements.map(element => {
             return element.innerHTML;
@@ -182,6 +193,10 @@ async function loginAndGetTeamsAssignments(userdata) {
         return links;
     });
     console.log("Got iFrame content".magenta);
+    if (iframe == true) {
+        console.log("You have got no teams assignments :)".green);
+        return [];
+    }
     let iframeJsonList = iframe.map(element => {
         var json = html2json(element);
         return json;

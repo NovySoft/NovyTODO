@@ -124,3 +124,6 @@ test.*
 
 #database folder
 db/*
+
+#Init script I run on bootup
+run.cmd

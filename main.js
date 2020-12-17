@@ -516,6 +516,7 @@ async function getTODOListId() {
 }
 
 async function getTODOitems(id) {
+    //TODO: Add counters for how many items you had done since last runtime
     let res = await requiem
         .requestBody({
             url: `https://graph.microsoft.com/v1.0/me/todo/lists/${id}/tasks`,

@@ -9,7 +9,7 @@ const sqlite3 = require('sqlite3').verbose();
 const sqlite = require('sqlite');
 const { table } = require('console');
 const colors = require('colors');
-const SERVER_PORT = 3000;
+const SERVER_PORT = 1235;
 var microsoftApiToken;
 var totalStart = new Date();
 var start = new Date();
@@ -40,7 +40,7 @@ app.disable("x-powered-by");
 app.get('/', (req, res) => {
     const authCodeUrlParameters = {
         scopes: ["user.read", "tasks.readwrite"],
-        redirectUri: "http://localhost:3000/redirect",
+        redirectUri: `http://localhost:${SERVER_PORT}/redirect`,
     };
 
     // get url to sign user in and consent to scopes needed for application
@@ -53,7 +53,7 @@ app.get('/redirect', (req, res) => {
     const tokenRequest = {
         code: req.query.code,
         scopes: ["user.read"],
-        redirectUri: "http://localhost:3000/redirect",
+        redirectUri: `http://localhost:${SERVER_PORT}/redirect`,
     };
 
     pca.acquireTokenByCode(tokenRequest).then((response) => {
@@ -112,9 +112,9 @@ async function main() {
     let fullTime = Math.abs(totalStart - new Date());
     console.log("\n");
     console.log("Operation done, have great day".green);
-    console.log(("Inserted new items, in total: " + (newItems.kreta + newItems.teams)).brightGreen);
-    console.log(("Inserted kreta items: " + newItems.kreta).brightGreen);
-    console.log(("Inserted teams items: " + newItems.teams).brightGreen);
+    console.log(("Inserted new items, in total: " + (newItems.kreta + newItems.teams)).magenta);
+    console.log(("Inserted kreta items: " + newItems.kreta).magenta);
+    console.log(("Inserted teams items: " + newItems.teams).magenta);
     console.log(("Complete operation took: " + fullTime / 60 + "s").blue);
     console.log(("Database time: " + databaseTime / 60 + "s").blue);
     console.log(("Teams time: " + teamsTime / 60 + "s").blue);
@@ -374,7 +374,7 @@ async function getMSApiToken(userdata) {
         headless: headless,
     });
     let page = await browser.newPage();
-    await page.goto('http://localhost:3000/', { waitUntil: 'networkidle0', timeout: 0 });
+    await page.goto(`http://localhost:${SERVER_PORT}/`, { waitUntil: 'networkidle0', timeout: 0 });
     await timeout(300);
     await page.type('#i0116', userdata.todo.username);
     await page.click("#idSIButton9"); //Press next

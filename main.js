@@ -293,7 +293,7 @@ function getTwentyFourHourTime(input) {
 async function getKretaAssignments(userdata) {
     let today = new Date();
     today.setDate(today.getDate() - 7);
-    let todayString = today.getFullYear() + "-" + today.getMonth() + "-" + today.getDate();
+    let todayString = today.toISOString();
     // POST JSON body
     var postData = qs.stringify({
         userName: userdata.kreta.username,

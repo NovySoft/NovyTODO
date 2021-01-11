@@ -162,7 +162,11 @@ async function loginAndGetTeamsAssignments(userdata) {
     }
     console.log("Office login complete".magenta);
     await page.goto('https://teams.microsoft.com/', { waitUntil: 'networkidle2', timeout: 0 });
-    await page.click(".use-app-lnk"); //Navigate to teams and click on I rather use the webapp
+    try {
+        await page.click(".use-app-lnk"); //Navigate to teams and click on I rather use the webapp
+    } catch (e) {
+        console.error("Looks like you don't have a web app option, strange. Continuing".red);
+    }
     console.log("Opened teams webapp".magenta);
     try {
         await page.waitForNavigation({ waitUntil: 'networkidle2' });
@@ -171,6 +175,7 @@ async function loginAndGetTeamsAssignments(userdata) {
     }
     //END OF LOGIN
     //START OF GETTING ASSIGMENTS
+    await timeout(5000);
     await page.click("#teams-app-bar > ul > li:nth-child(4)"); //Click on assignments
     await page.reload({ waitUntil: "networkidle2", timeout: 0 });
     console.log("Navigated To Assignments Page".magenta);

@@ -9,7 +9,7 @@ const sqlite3 = require('sqlite3').verbose();
 const sqlite = require('sqlite');
 const { table } = require('console');
 const colors = require('colors');
-const SERVER_PORT = 1235;
+var SERVER_PORT = 1235;
 var microsoftApiToken;
 var totalStart = new Date();
 var start = new Date();
@@ -374,7 +374,13 @@ function removeTags(str) {
 }
 
 async function getMSApiToken(userdata) {
-    let server = app.listen(SERVER_PORT, () => console.log('Express Login Server Started'.magenta));
+    let server;
+    try {
+        server = app.listen(SERVER_PORT, () => console.log('Express Login Server Started'.magenta));
+    } catch (e) {
+        SERVER_PORT += 1;
+        server = app.listen(SERVER_PORT, () => console.log('Express Login Server Started'.magenta));
+    }
     let browser = await puppeteer.launch({
         headless: headless,
     });

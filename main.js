@@ -9,7 +9,7 @@ const sqlite3 = require('sqlite3').verbose();
 const sqlite = require('sqlite');
 const { table } = require('console');
 const colors = require('colors');
-var SERVER_PORT = 1235;
+var SERVER_PORT = 547;
 var microsoftApiToken;
 var totalStart = new Date();
 var start = new Date();
@@ -122,6 +122,23 @@ async function main() {
     console.log(("Todo time: " + todoTime / 60 + "s").blue);
 }
 
+function hunDateToEnglish(string){
+    var input = string;
+    input = input.toLowerCase().replace("január", "january");
+    input = input.toLowerCase().replace("február", "february");
+    input = input.toLowerCase().replace("március", "march");
+    input = input.toLowerCase().replace("április", "april");
+    input = input.toLowerCase().replace("május", "may");
+    input = input.toLowerCase().replace("június", "june");
+    input = input.toLowerCase().replace("július", "july");
+    input = input.toLowerCase().replace("augusztus", "august");
+    input = input.toLowerCase().replace("szeptember", "september");
+    input = input.toLowerCase().replace("október", "october");
+    input = input.toLowerCase().replace("november", "november");
+    input = input.toLowerCase().replace("december", "december");
+    return input;
+}
+
 //This function returns a list with the objects of the teams assignments
 async function loginAndGetTeamsAssignments(userdata) {
     let browser = await puppeteer.launch({
@@ -222,6 +239,7 @@ async function loginAndGetTeamsAssignments(userdata) {
             !(due.includes("holnap") || due.includes("tomorrow") ||
                 (due.includes("ma") || due.includes("today")))) {
             due = due.split("Határidő: ")[1];
+            due = hunDateToEnglish(due);
             due = Date.parse(due);
             due = new Date(due).toISOString();
         } else {

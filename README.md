@@ -1,6 +1,6 @@
 # NovyTODO
 
-Egy olcsó program ami átírja a jegyeidet a teamsből és a krétából a microsoft TODO-ba.
+Egy olcsó program ami átírja a házifeladatokat a teamsből és a krétából a microsoft TODO-ba.
 A kódot ne próbáld megérteni, mert én sem tudom hogyan működik és néha miért nem :)
 
 ## Setup

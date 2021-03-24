@@ -233,7 +233,7 @@ async function loginAndGetTeamsAssignments(userdata) {
     console.log("Converted iFrame content to JSON".magenta);
     let tempHomeworkObjectList = iframeJsonList.map(element => {
         let tempTitle = element.child[0].child[0].child[0].child[1].child[0].child[0].text;
-        let tempClass = element.child[0].child[0].child[0].child[2].child[0].text;
+        let tempClass = element.child[0].child[0].child[0].child[2].child[0].child[0].text;
         let due = element.child[0].child[0].child[0].child[3].child[0].child[2].child[0].text;
         if ((due.split("Határidő: ")[1] != null || due.split("Határidő: ")[1] != undefined) &&
             !(due.includes("holnap") || due.includes("tomorrow") ||

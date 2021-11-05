@@ -7,8 +7,9 @@ const express = require("express");
 const msal = require('@azure/msal-node');
 const sqlite3 = require('sqlite3').verbose();
 const sqlite = require('sqlite');
-const { table } = require('console');
+const { table, time } = require('console');
 const colors = require('colors');
+const crypto = require("crypto");
 var SERVER_PORT = 547;
 var microsoftApiToken;
 var totalStart = new Date();
@@ -17,7 +18,7 @@ var rawData = fs.readFileSync("config.json", "utf-8");
 var userData = JSON.parse(rawData);
 const databasePath = "./db/novytodo.db";
 var db;
-var headless = true;
+var headless = false;
 var newItems = {
     kreta: 0,
     teams: 0,
@@ -68,7 +69,7 @@ app.get('/redirect', (req, res) => {
 function addCustomFunction() {
     //We use hash functions to store id of teams assignments
     Object.defineProperty(String.prototype, 'hashCode', {
-        value: function() {
+        value: function () {
             var hash = 0,
                 i, chr;
             for (i = 0; i < this.length; i++) {
@@ -79,7 +80,7 @@ function addCustomFunction() {
             return hash;
         }
     });
-    Array.prototype.removeIf = function(callback) {
+    Array.prototype.removeIf = function (callback) {
         var i = this.length;
         while (i--) {
             if (callback(this[i], i)) {
@@ -122,7 +123,7 @@ async function main() {
     console.log(("Todo time: " + todoTime / 60 + "s").blue);
 }
 
-function hunDateToEnglish(string){
+function hunDateToEnglish(string) {
     var input = string;
     input = input.toLowerCase().replace("január", "january");
     input = input.toLowerCase().replace("február", "february");
@@ -294,8 +295,12 @@ async function loginAndGetTeamsAssignments(userdata) {
         };
     });
     console.log("Made JS objects from JSON".green);
+    try{
     await page.close();
     await browser.close();
+    }catch(e){
+        console.log("An error happened while closing the browser, still continuing though!".red, e)
+    }
     return tempHomeworkObjectList;
 }
 
@@ -313,11 +318,27 @@ function getTwentyFourHourTime(input) {
     return (sHours + ":" + sMinutes);
 }
 
+async function encodeKretaNonce(userdata) {
+    let nonce = await requiem.requestBody({
+        url: "https://idp.e-kreta.hu/nonce",
+    });
+    nonce = nonce.body.toString("utf8");
+    const keyToBeEncrypted = userdata.kreta.username.toLowerCase() + userdata.kreta.school.toLowerCase() + nonce;
+    var hmac = crypto.createHmac("sha512", new Buffer.from("5Kmpmgd5fJ", 'utf-8'));
+    var signed = hmac.update(new Buffer.from(keyToBeEncrypted, 'utf-8')).digest("base64");
+
+    return {
+        nonce: nonce,
+        key: signed,
+    };
+}
+
 async function getKretaAssignments(userdata) {
     let today = new Date();
     today.setDate(today.getDate() - 7);
     let todayString = today.toISOString();
     // POST JSON body
+    const nonce = await encodeKretaNonce(userdata);
     var postData = qs.stringify({
         userName: userdata.kreta.username,
         password: userdata.kreta.password,
@@ -330,6 +351,9 @@ async function getKretaAssignments(userdata) {
         headers: {
             "User-Agent": "NovyTODO",
             "Content-Type": "application/x-www-form-urlencoded",
+            "X-Authorizationpolicy-Nonce": nonce.nonce,
+            "X-Authorizationpolicy-Key": nonce.key,
+            "X-Authorizationpolicy-Version": "v1",
         },
         method: "POST",
         body: postData,
@@ -413,7 +437,15 @@ async function getMSApiToken(userdata) {
     } catch (e) {
         console.log("Navigation timeout continuing".red);
     }
-    await page.type('#i0118', userdata.todo.password);
+    try {
+        await page.type('#i0118', userdata.todo.password);
+    } catch (e) {
+        await page.click('#idA_PWD_SwitchToCredPicker');
+        await timeout(500);
+        await page.click('#credentialList > div:nth-child(2) > div > div');
+        await timeout(500);
+        await page.type('#i0118', userdata.todo.password);
+    }
     await page.click("#idSIButton9"); //Press login
     console.log("Entered Password".magenta);
     try {
@@ -421,6 +453,17 @@ async function getMSApiToken(userdata) {
     } catch (e) {
         console.log("Navigation timeout continuing".red);
     }
+    try {
+        await page.click('#idBtn_Back');
+    } catch (e) {
+        console.log("No stay signed in button".red);
+    }
+    try {
+        await page.waitForNavigation({ waitUntil: 'networkidle0' });
+    } catch (e) {
+        console.log("Navigation timeout continuing".red);
+    }
+    await timeout(250);
     //!NOTICE FIRST YOU SHOULD MANUALLY ALLOW YOUR APPLICATION
     //!You musn't click stay signed in!
     //*The code cannot decide whether that is necessary
